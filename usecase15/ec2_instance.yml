@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to launch an EC2 instance with NGINX and Hello World page
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    ConstraintDescription: Must be a t2.micro or t3.micro instance type.
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Resources:
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: WebServerSG
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AmiId
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: ServiceCatalog-EC2Instance
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          amazon-linux-extras install nginx1 -y
+          systemctl start nginx
+          systemctl enable nginx
+
+          echo "<!DOCTYPE html>
+          <html>
+          <head>
+            <title>Hello World App</title>
+          </head>
+          <body>
+            <h1>Hello, World from Service Catalog EC2!</h1>
+            <p>This is a sample web page served by NGINX on Amazon Linux 2.</p>
+          </body>
+          </html>" > /usr/share/nginx/html/index.html
+
+Outputs:
+  InstanceId:
+    Value: !Ref EC2Instance
+    Description: EC2 Instance ID
+
+  PublicIP:
+    Value: !GetAtt EC2Instance.PublicIp
+    Description: Public IP of the EC2 instance
