@@ -1,41 +1,33 @@
-﻿## Requirements.
+﻿# ☁️ Use Case 2: High Availability 2-Tier Architecture WebApp (Terraform on AWS)
 
-No requirements
+This project provisions a **highly available, two-tier web application** architecture on AWS using **Terraform modules**. It includes:
 
+- VPC with public/private subnets
+- EC2 instances for the web tier in public subnets
+- RDS MySQL instance for the database tier in private subnets
+- Application Load Balancer (ALB)
+- Security groups for network isolation
+- Remote backend support
+- Modular Terraform setup
 
-
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_VPC"></a> [VPC](#module\_VPC) | ./modules/vpc | n/a |
-
-
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input\_name) | Name for the VPC | `string` | test | no |
-| <a name="input_region"></a> [region](#input\_region) | Name for the region | `string` | `"us-east-1"` | no |
-| <a name="input_vpc_cidr_block"></a> [vpc\_cidr\_block](#input\_vpc\_cidr\_block) | CIDR range for the VPC | `string` | `"10.10.0.0/16"` | no |
-| <a name="input_subnet_count"></a> [name](#input\_subnet_count) | subnet count for each tier | `number` | 2 | no |
+---
 
 
+---
 
-## Outputs ###
+## 📁 Folder Structure
 
-| Name | Description |
-|------|-------------|
-| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |
-
-
-
-
-
-
-
-
-
+```bash
+usecase2-HA-2tier-architecture-webapp/
+├── backend.tf                   # Remote state backend config (S3 + DynamoDB)
+├── main.tf                      # Main module composition
+├── variables.tf                 # Input variables
+├── outputs.tf                   # Outputs of the infrastructure
+└── modules/
+    ├── vpc/                     # VPC, public/private subnets, routing
+    ├── alb/                     # Application Load Balancer
+    ├── instance/                # EC2 instance launch
+    ├── sg_group/                # Security groups for ALB, EC2, RDS
+    └── rds/                     # RDS MySQL instance
 
 
