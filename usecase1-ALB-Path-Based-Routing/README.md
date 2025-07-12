@@ -1,36 +1,36 @@
-﻿## Requirements
+﻿# 🛠️ ALB Path-Based Routing with EC2 Instances (Terraform)
 
-No requirements.
+This Terraform project deploys a **highly available, path-based routing architecture** on AWS. It provisions:
 
+- A custom VPC
+- Public subnets
+- Security groups
+- Application Load Balancer (ALB)
+- Target groups for path-based routing (`/`, `/image`, `/register`)
+- Three EC2 instances serving different content based on the request path
 
+---
 
-## Modules
+## 🧱 Architecture Overview
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_VPC"></a> [VPC](#module\_VPC) | ./modules/vpc | n/a |
+```text
+User
+ │
+ └──> ALB (Path-based rules)
+       ├── `/`        ──> EC2 Instance A (Home)
+       ├── `/image`   ──> EC2 Instance B (Image)
+       └── `/register`──> EC2 Instance C (Register)
 
+ Project Structure
 
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input\_name) | Name for the VPC | `string` | test | no |
-| <a name="input_region"></a> [region](#input\_region) | Name for the region | `string` | `"us-east-1"` | no |
-| <a name="input_vpc_cidr_block"></a> [vpc\_cidr\_block](#input\_vpc\_cidr\_block) | CIDR range for the VPC | `string` | `"10.0.0.0/16"` | no |
-| <a name="input_subnet_count"></a> [name](#input\_subnet_count) | subnet count for each tier | `number` | 3 | no |
-
-
-
-
-
-
-
-
-
-
-
-
-
+ .
+├── main.tf                 # Main Terraform manifest (shown above)
+├── variables.tf            # Input variables for customization
+├── outputs.tf              # Output values for inspection
+└── modules/
+    ├── vpc/                # VPC and subnet resources
+    ├── alb/                # Application Load Balancer and listeners
+    ├── sg_group/           # Security group for ALB and EC2
+    ├── target_group/       # ALB target group with path rule
+    └── instance/           # EC2 instance setup and registration
 
