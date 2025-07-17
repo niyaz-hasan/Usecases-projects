@@ -73,3 +73,126 @@ jobs:
 
       - name: Save Service2 Image Tag
         run: echo "SERVICE2_IMAGE=${{ vars.ECR_REGISTRY }}/test-repo-2:${{ github.sha }}" >> $GITHUB_ENV
+
+######################################################### new update ################################################################
+name: Build and Push to ECR
+on:
+  push:
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-push-service1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::975049998898:role/githubaction-assumerole
+          role-session-name: github-assume
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR # login ecr
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image for Service1
+        run: |
+          docker build -t ${{ vars.ECR_REGISTRY }}/test-repo-1:${{ github.sha }} ./docker/appointments
+        #  docker tag ${{ vars.ECR_REGISTRY }}/test-repo-1:${{ github.sha }} ${{ vars.ECR_REGISTRY }}/test-repo-1:latest
+
+      - name: Push Docker Image for Service1
+        run: |
+          docker push ${{ vars.ECR_REGISTRY }}/test-repo-1:${{ github.sha }}
+        #  docker push ${{ vars.ECR_REGISTRY }}/test-repo-1:latest
+
+      - name: Save Service1 Image Tag
+        run: echo "SERVICE1_IMAGE=${{ vars.ECR_REGISTRY }}/test-repo-1:${{ github.sha }}" >> $GITHUB_ENV
+
+  build-push-service2:
+    runs-on: ubuntu-latest
+    needs: build-push-service1  ### Optional dependency
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::975049998898:role/githubaction-assumerole
+          role-session-name: github-assume
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image for Service2
+        run: |
+          docker build -t ${{ vars.ECR_REGISTRY }}/test-repo-2:${{ github.sha }} ./docker/patient
+        #  docker tag ${{ vars.ECR_REGISTRY }}/test-repo-2:${{ github.sha }} ${{ vars.ECR_REGISTRY }}/test-repo-2:latest
+          
+
+
+      - name: Push Docker Image for Service2
+        run: |
+          docker push ${{ vars.ECR_REGISTRY }}/test-repo-2:${{ github.sha }}
+        #  docker push ${{ vars.ECR_REGISTRY }}/test-repo-2:latest
+
+      - name: Save Service2 Image Tag
+        run: echo "SERVICE2_IMAGE=${{ vars.ECR_REGISTRY }}/test-repo-2:${{ github.sha }}" >> $GITHUB_ENV
+
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [build-push-service1, build-push-service2]
+    if: always() && (needs.build-push-service1.result == 'success' || needs.build-push-service2.result == 'success') && github.ref == 'refs/heads/main'
+    
+    environment:
+      name: production
+    
+    steps:
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::975049998898:role/githubaction-assumerole
+          aws-region: us-east-1
+
+      - name: Update Patient Service
+        if: needs.build-push-service1.result == 'success'
+        run: |
+          aws ecs update-service \
+            --cluster healthcare-app-dev-cluster \
+            --service healthcare-app-dev-patient-service \
+            --force-new-deployment
+
+      - name: Update Appointment Service
+        if: needs.build-push-service2.result == 'success'
+        run: |
+          aws ecs update-service \
+            --cluster healthcare-app-dev-cluster \
+            --service healthcare-app-dev-appointment-service \
+            --force-new-deployment
+
+      - name: Wait for services to stabilize
+        run: |
+          if [[ "${{ needs.build-push-service1.result }}" == "success" ]]; then
+            aws ecs wait services-stable \
+              --cluster healthcare-app-dev-cluster \
+              --services healthcare-app-dev-patient-service
+          fi
+          
+          if [[ "${{ needs.build-push-service2.result }}" == "success" ]]; then
+            aws ecs wait services-stable \
+              --cluster healthcare-app-dev-cluster \
+              --services healthcare-app-dev-appointment-service
+          fi
